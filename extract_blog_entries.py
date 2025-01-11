@@ -23,10 +23,13 @@ from docx.oxml import OxmlElement
 from docx2pdf import convert
 import os
 
+CONFIG_FILE = ".\\config.json"
+BLOG_POST_LIST = ".\\test_output\\blog_post_urls.txt"
+PAGE_LOAD_WAIT = 20
+
 def get_travel_blog_urls() -> List[str]:
     # Load the configuration file
-    config_path = "C:\\Users\\kiran\\OneDrive\\Documents\\2024_Travel_Blogs\\code\\config.json"
-    with open(config_path, "r") as config_file:
+    with open(CONFIG_FILE, "r") as config_file:
         config = json.load(config_file)
 
     # Fetch API Key and Blog ID from the configuration file
@@ -67,9 +70,8 @@ def download_and_add_map(doc, map_src, element):
     try:
         # Construct a Google Static Maps API URL
         base_url = "https://maps.googleapis.com/maps/api/staticmap"
-            # Load the configuration file
-        config_path = "C:\\Users\\kiran\\OneDrive\\Documents\\2024_Travel_Blogs\\code\\config.json"
-        with open(config_path, "r") as config_file:
+        # Load the configuration file
+        with open(CONFIG_FILE, "r") as config_file:
             config = json.load(config_file)
         api_key = config['GMAPS_API_KEY']  # Replace with your actual API key
 
@@ -117,7 +119,7 @@ def download_and_add_map_sshot(doc, title, map_src, element):
         driver.get(map_src)
 
         # Wait for the page to load completely
-        time.sleep(10)
+        time.sleep(PAGE_LOAD_WAIT)
 
         # Wait until the map iframe is loaded
         # WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.TAG_NAME, 'iframe')))
@@ -150,8 +152,7 @@ def set_font_to_aptos(doc):
 
 def create_travel_blog_docx(output_docx_path):
     # Load URLs from the text file
-    input_file_path = "C:\\Users\\kiran\\OneDrive\\Documents\\2024_Travel_Blogs\\Downloaded_Posts\\blog_post_urls.txt"
-    with open(input_file_path, "r", encoding="utf-8") as file:
+    with open(BLOG_POST_LIST, "r", encoding="utf-8") as file:
         post_links = [line.strip() for line in file.readlines()]
 
     # Create a new Word document
@@ -212,8 +213,7 @@ def create_travel_blog_docx(output_docx_path):
 
 def create_travel_blog_docx_split(output_docx_path):
     # Load URLs from the text file
-    input_file_path = "C:\\Users\\kiran\\OneDrive\\Documents\\2024_Travel_Blogs\\Downloaded_Posts\\blog_post_urls.txt"
-    with open(input_file_path, "r", encoding="utf-8") as file:
+    with open(BLOG_POST_LIST, "r", encoding="utf-8") as file:
         post_links = [line.strip() for line in file.readlines()]
 
     chunk_size = 1
@@ -272,12 +272,12 @@ def create_travel_blog_docx_split(output_docx_path):
         doc_name = os.path.join(output_docx_path, f'travel_blog_posts_{idx + 1:02}.docx')
         doc.save(doc_name)
 
-def convert_docx_to_pdf(docx_path, pdf_path) -> str:
+def convert_docx_to_pdf(docx_file_path, pdf_file_path) -> str:
     try:
-        convert(docx_path, pdf_path)
-        return f"Successfully converted {docx_path} to {pdf_path}"
+        convert(docx_file_path, pdf_file_path)
+        return f"Successfully converted {docx_file_path} to {pdf_file_path}"
     except Exception as e:
-        return f"Failed to convert {docx_path} to PDF: {e}"
+        return f"Failed to convert {docx_file_path} to PDF: {e}"
 
 def convert_docx_to_pdf_multi(docx_path, pdf_path, docx_file_name_starts_with) -> None:
     try:
@@ -291,28 +291,28 @@ def convert_docx_to_pdf_multi(docx_path, pdf_path, docx_file_name_starts_with) -
         print(f"Failed to convert documents starting with {docx_file_name_starts_with} to PDFs: {e}")
 
 if __name__ == "__main__":
-    # # Define the output file path
-    # output_file_path = "C:\\Users\\kiran\\OneDrive\\Documents\\2024_Travel_Blogs\\Downloaded_Posts\\blog_post_urls.txt"
+    # Define the output file path
+    output_file_path = ".\\test_output\\blog_post_urls.txt"
 
-    # # Write all blog post URLs to the file in reverse order (oldest first)
-    # post_links = get_travel_blog_urls()
-    # with open(output_file_path, "w", encoding="utf-8") as file:
-    #     for link in post_links:
-    #         file.write(link + "\n")
-    #     print(f"All blog post URLs have been saved to {output_file_path}")
+    # Write all blog post URLs to the file in reverse order (oldest first)
+    post_links = get_travel_blog_urls()
+    with open(output_file_path, "w", encoding="utf-8") as file:
+        for link in post_links:
+            file.write(link + "\n")
+        print(f"All blog post URLs have been saved to {output_file_path}")
 
-    # # # Create a Word document with the blog posts
-    # output_docx_path = "C:\\Users\\kiran\\OneDrive\\Documents\\2024_Travel_Blogs\\Downloaded_Posts\\travel_blog_posts.docx"
-    # create_travel_blog_docx(output_docx_path)
-    # print(f"All blog post contents have been saved to {output_docx_path}")
+    # Create a Word document with the blog posts
+    # output_docx_file = ".\\test_output\\travel_blog_posts.docx"
+    # create_travel_blog_docx(output_docx_file)
+    # print(f"All blog post contents have been saved to {output_docx_file}")
 
-    # output_pdf_path = "C:\\Users\\kiran\\OneDrive\\Documents\\2024_Travel_Blogs\\Downloaded_Posts\\travel_blog_posts.pdf"
-    # docx2pdf_convert_result = convert_docx_to_pdf(output_docx_path, output_pdf_path)
+    # output_pdf_file = ".\\test_output\\travel_blog_posts.pdf"
+    # docx2pdf_convert_result = convert_docx_to_pdf(output_docx_file, output_pdf_file)
     # print(docx2pdf_convert_result)
 
-    # docx_path = "C:\\Users\\kiran\\OneDrive\\Documents\\2024_Travel_Blogs\\Downloaded_Posts\\"
-    # # create_travel_blog_docx_split(docx_path)
+    print("creating one docx per blog post")
+    output_docx_path = ".\\test_output"
+    create_travel_blog_docx_split(output_docx_path)
 
     # file_name_starts_with = "travel_blog_posts_"
-    # convert_docx_to_pdf_multi(docx_path, docx_path, file_name_starts_with)
-    print('test')
+    # convert_docx_to_pdf_multi(output_docx_path, output_docx_path, file_name_starts_with)
