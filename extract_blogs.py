@@ -7,7 +7,7 @@ from io import BytesIO  # Import BytesIO for handling image data in memory
 import html  # Import html to unescape HTML entities
 
 # Load XML file
-xml_file = "C:\\Users\\kiran\\OneDrive\\Documents\\2024_Travel_Blogs\\kh-travel-blog-11-09-2024.xml"  # Path to the XML file containing blog entries
+xml_file = "travel-blog-11-09-2024.xml"  # Path to the XML file containing blog entries
 tree = ET.parse(xml_file)  # Parse the XML file
 tree.getroot()  # Get the root element of the XML
 root = tree.getroot()  # Get the root element of the XML
@@ -22,7 +22,7 @@ namespaces = {
 
 # Create a new Word document
 doc = Document()  # Create a new Word document
-doc.add_heading("Hegdes' first safari: blogs", level=1)  # Add a main heading to the document
+doc.add_heading("First safari: blogs", level=1)  # Add a main heading to the document
 
 first_time = True # for the first level 2 header, we dont need a page break
 
@@ -78,7 +78,7 @@ for entry in root.findall('atom:entry', namespaces):  # Find all <entry> element
                             print(f"Failed to download image: {img_src}, error: {e}")  # Print an error message
 
 # Save the Word document
-output_file = 'C:\\Users\\kiran\\OneDrive\\Documents\\2024_Travel_Blogs\\Kiran_blog_entries_v04.docx' # Path to save the Word document
+output_file = 'blog_entries_v04.docx' # Path to save the Word document
 doc.save(output_file)  # Save the Word document
 
 output_file  # Return the path of the saved Word document
