@@ -292,27 +292,27 @@ def convert_docx_to_pdf_multi(docx_path, pdf_path, docx_file_name_starts_with) -
 
 if __name__ == "__main__":
     # Define the output file path
-    output_file_path = ".\\test_output\\blog_post_urls.txt"
+    blog_post_urls = ".\\test_output\\blog_post_urls.txt"
 
     # Write all blog post URLs to the file in reverse order (oldest first)
     post_links = get_travel_blog_urls()
-    with open(output_file_path, "w", encoding="utf-8") as file:
+    with open(blog_post_urls, "w", encoding="utf-8") as file:
         for link in post_links:
             file.write(link + "\n")
-        print(f"All blog post URLs have been saved to {output_file_path}")
+        print(f"All blog post URLs have been saved to {blog_post_urls}")
 
     # Create a Word document with the blog posts
-    # output_docx_file = ".\\test_output\\travel_blog_posts.docx"
-    # create_travel_blog_docx(output_docx_file)
-    # print(f"All blog post contents have been saved to {output_docx_file}")
+    output_docx_file = ".\\test_output\\travel_blog_posts.docx"
+    create_travel_blog_docx(output_docx_file)
+    print(f"All blog post contents have been saved to {output_docx_file}")
 
-    # output_pdf_file = ".\\test_output\\travel_blog_posts.pdf"
-    # docx2pdf_convert_result = convert_docx_to_pdf(output_docx_file, output_pdf_file)
-    # print(docx2pdf_convert_result)
+    output_pdf_file = ".\\test_output\\travel_blog_posts.pdf"
+    docx2pdf_convert_result = convert_docx_to_pdf(output_docx_file, output_pdf_file)
+    print(docx2pdf_convert_result)
 
     print("creating one docx per blog post")
     output_docx_path = ".\\test_output"
     create_travel_blog_docx_split(output_docx_path)
 
-    # file_name_starts_with = "travel_blog_posts_"
-    # convert_docx_to_pdf_multi(output_docx_path, output_docx_path, file_name_starts_with)
+    file_name_starts_with = "travel_blog_posts_"
+    convert_docx_to_pdf_multi(output_docx_path, output_docx_path, file_name_starts_with)
