@@ -1,3 +1,5 @@
 .env
 config.json
 test_output/travel_blog_post*.docx
+test_output/*.pdf
+test_output/*.html
