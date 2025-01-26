@@ -1,4 +1,5 @@
 import json
+import logging
 from googleapiclient.discovery import build
 from docx import Document
 import requests
@@ -22,10 +23,26 @@ import time
 from datetime import datetime
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 
+# configure logging
+# logging.basicConfig(level=logging.INFO,
+#                     format='%(asctime)s - %(levelname)s - %(message)s')
+
+# below to be enabled when i want to save the log files
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("travel_blog_extractor.log"),
+        logging.StreamHandler()
+    ]
+)
+
 class TravelBlogExtractor:
     def __init__(self, 
                  blog_post_list=".\\test_output\\blog_post_urls.txt",
-                 page_load_wait=20, 
+                 page_load_wait=30, 
+                 web_driver_wait=30,
+                 render_pause=4,
                  output_docx_file=".\\test_output\\travel_blog_posts.docx", 
                  output_pdf_file=".\\test_output\\travel_blog_posts.pdf", 
                  output_docx_path=".\\test_output", 
@@ -34,6 +51,9 @@ class TravelBlogExtractor:
         self.config_file = ".\\config.json"
         self.blog_post_list = blog_post_list
         self.page_load_wait = page_load_wait
+        self.web_driver_wait = web_driver_wait
+        self.render_pause = render_pause
+
         self.output_docx_file = output_docx_file
         self.output_pdf_file = output_pdf_file
         self.output_docx_path = output_docx_path
@@ -45,6 +65,11 @@ class TravelBlogExtractor:
         self.blogger_api_key = self.config['BLOGGER_API_KEY']
         self.travel_blog_id = self.config['TRAVEL_BLOG_ID']
         self.gmaps_api_key = self.config['GMAPS_API_KEY']
+
+        # Create a reusable session
+        self.session = requests.Session()
+        # create a reusable webdriver
+        self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
 
     def get_travel_blog_urls(self) -> List[str]:
         service = build('blogger', 'v3', developerKey=self.blogger_api_key)
@@ -80,7 +105,7 @@ class TravelBlogExtractor:
         :param img_src: The source URL or path of the image to add.
         """
         try:
-            img_response = requests.get(img_src)
+            img_response = self.session.get(img_src)
             if img_response.status_code == 200:
                 image_stream = BytesIO(img_response.content)
                 paragraph = self.add_formatted_paragraph(doc,
@@ -93,9 +118,9 @@ class TravelBlogExtractor:
                 run.add_picture(image_stream, width=Inches(6.0))
                 paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
             else:
-                print(f"Failed to download image: {img_src} - Status Code: {img_response.status_code}")
+                logging.error(f"Failed to download image: {img_src} - Status Code: {img_response.status_code}")
         except Exception as img_e:
-            print(f"Failed to add image: {img_src}, error: {img_e}")
+            logging.error(f"Failed to add image: {img_src}, error: {img_e}")
 
     def download_and_add_image(self, doc, img_src, element):
         """
@@ -110,7 +135,7 @@ class TravelBlogExtractor:
             if caption:
                 self.add_caption(doc, caption)
         except Exception as img_e:
-            print(f"Failed to download or add image: {img_src}, error: {img_e}")
+            logging.error(f"Failed to download or add image: {img_src}, error: {img_e}")
 
     def download_and_add_map_sshot(self, doc, title, map_src):
         try:
@@ -118,23 +143,33 @@ class TravelBlogExtractor:
             options.add_argument('--headless')
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-dev-shm-usage')
-            driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
-            print(f"Loading map at {map_src} in page {title}")
-            driver.get(map_src)
-
-            # Wait for the page to load completely
-            time.sleep(self.page_load_wait)
+            logging.info(f"Loading map at {map_src} in page {title}")
+            self.driver.get(map_src)
 
             # Wait until the map iframe is loaded
-            # WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.TAG_NAME, 'iframe')))
+            WebDriverWait(self.driver, self.web_driver_wait).until(EC.presence_of_element_located((By.TAG_NAME, 'iframe')))
+            logging.info(f" -> webdrive wait ({self.web_driver_wait}s) complete")
 
-            screenshot = driver.get_screenshot_as_png()
+            # Wait for the page to load completely
+            # time.sleep(self.page_load_wait)
+            time.sleep(self.render_pause)
+            logging.info(f" -> render pause ({self.render_pause}s) complete")
+
+            screenshot = self.driver.get_screenshot_as_png()
             map_stream = BytesIO(screenshot)
+            # paragraph = self.add_formatted_paragraph(doc=doc,
+            #                                          text="",
+            #                                          style='Body Text',
+            #                                          before=4,
+            #                                          after=4,
+            #                                          space_between=False)
+            # run = paragraph.add_run()
+            # run.add_picture(map_stream, width=Inches(6.0))
+            # paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
             doc.add_picture(map_stream, width=Inches(6.0))
-            driver.quit()
         except Exception as map_e:
-            print(f"Failed to download map: {map_src}, error: {map_e}")
+            logging.error(f"Failed to download map: {map_src}, error: {map_e}")
 
     @staticmethod
     def set_font_to_aptos(doc):
@@ -216,16 +251,16 @@ class TravelBlogExtractor:
                 self.process_list(doc, child, level=level + 1)
 
     def process_blog_post(self, doc, link):
-        print("++ entering process blog post ++")
+        logging.info("++ entering process blog post ++")
         try:
-            response = requests.get(link)
+            response = self.session.get(link)
             if response.status_code == 200:
                 soup = BeautifulSoup(response.content, 'html.parser')
                 title = soup.find("title").get_text().replace("Travel diaries: ", "") if soup.find("title") else "No Title"
                 doc.add_heading(title, level=2)
 
                 post_body = soup.find("div", class_="post-body")
-                # print(post_body)
+                # logging.debug(post_body)
                 if post_body:
                     for element in post_body.descendants:
 
@@ -286,9 +321,9 @@ class TravelBlogExtractor:
                             if map_src and map_src.startswith("https://www.google.com/maps"):
                                 self.download_and_add_map_sshot(doc, title, map_src)
             else:
-                print(f"Failed to load post: {link} - Status Code: {response.status_code}")
+                logging.error(f"Failed to load post: {link} - Status Code: {response.status_code}")
         except Exception as e:
-            print(f"Error processing {link}: {e}")
+            logging.error(f"Error processing {link}: {e}")
 
     def create_travel_blog_docx(self, output_docx_path, blog_post_list):
         with open(blog_post_list, "r", encoding="utf-8") as file:
@@ -337,35 +372,63 @@ class TravelBlogExtractor:
                     docx_file = os.path.join(docx_path, file_name)
                     pdf_file = os.path.join(pdf_path, f"{os.path.splitext(file_name)[0]}.pdf")
                     convert(docx_file, pdf_file)
-                    print(f"Successfully converted {docx_file} to {pdf_file}")
+                    logging.info(f"Successfully converted {docx_file} to {pdf_file}")
         except Exception as e:
-            print(f"Failed to convert documents starting with {file_name_starts_with} to PDFs: {e}")
+            logging.error(f"Failed to convert documents starting with {file_name_starts_with} to PDFs: {e}")
 
-def log_execution(task_name, func, *args, **kwargs):
-    start_time = datetime.now()
-    print(f"{start_time}: Starting {task_name}")
-    result = func(*args, **kwargs)
-    end_time = datetime.now()
-    print(f"{end_time}: Completed {task_name} (Time taken: {(end_time - start_time).total_seconds()} seconds)")
-    return result
+    def close_session(self):
+        """
+        closes the requests session to release resources
+        """
+        self.session.close()
+
+    def close_driver(self):
+        """Closes the Selenium WebDriver to release resources."""
+        if self.driver:
+            self.driver.quit()
 
 if __name__ == "__main__":
+    def log_execution(task_name, func, *args, **kwargs):
+        start_time = datetime.now()
+        logging.info(f"{start_time}: Starting {task_name}")
+        result = func(*args, **kwargs)
+        end_time = datetime.now()
+        logging.info(f"{end_time}: Completed {task_name} (Time taken: {(end_time - start_time).total_seconds()} seconds)")
+        return result
+
     # doc = Document()
     # print([style.name for style in doc.styles])
 
     extractor = TravelBlogExtractor()
 
-    post_links = log_execution("get_travel_blog_urls", extractor.get_travel_blog_urls)
+    try:
+        post_links = log_execution("get_travel_blog_urls", extractor.get_travel_blog_urls)
 
-    log_execution(
-        "Writing blog post URLs to file",
-        lambda: open(extractor.blog_post_list, "w", encoding="utf-8").writelines([link + "\n" for link in post_links])
-    )
+        log_execution(
+            "Writing blog post URLs to file",
+            lambda: open(extractor.blog_post_list, "w", encoding="utf-8").writelines([link + "\n" for link in post_links])
+        )
 
-    log_execution("create_travel_blog_docx", extractor.create_travel_blog_docx, extractor.output_docx_file, extractor.blog_post_list)
+        log_execution("create_travel_blog_docx",
+                      extractor.create_travel_blog_docx,
+                      extractor.output_docx_file,
+                      extractor.blog_post_list)
 
-    log_execution("convert_docx_to_pdf", extractor.convert_docx_to_pdf, extractor.output_docx_file, extractor.output_pdf_file)
+        # log_execution("convert_docx_to_pdf",
+        #               extractor.convert_docx_to_pdf,
+        #               extractor.output_docx_file,
+        #               extractor.output_pdf_file)
 
-    log_execution("create_travel_blog_docx_split", extractor.create_travel_blog_docx_split, extractor.output_docx_path, extractor.blog_post_list)
+        # log_execution("create_travel_blog_docx_split",
+        #               extractor.create_travel_blog_docx_split,
+        #               extractor.output_docx_path,
+        #               extractor.blog_post_list)
 
-    log_execution("convert_docx_to_pdf_multi", extractor.convert_docx_to_pdf_multi, extractor.output_docx_path, extractor.output_docx_path, extractor.file_name_starts_with)
+        # log_execution("convert_docx_to_pdf_multi",
+        #               extractor.convert_docx_to_pdf_multi,
+        #               extractor.output_docx_path,
+        #               extractor.output_docx_path,
+        #               extractor.file_name_starts_with)
+    finally:
+        extractor.close_session()
+        extractor.close_driver()
