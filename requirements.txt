@@ -1,6 +1,6 @@
 # API and HTTP Requests
 google-api-python-client==2.88.0
-requests==2.31.0
+requests==2.32.2
 
 # Document Processing
 python-docx==0.8.11
