@@ -64,7 +64,6 @@ class TravelBlogExtractor:
             self.config = json.load(config_file)
         self.blogger_api_key = self.config['BLOGGER_API_KEY']
         self.travel_blog_id = self.config['TRAVEL_BLOG_ID']
-        self.gmaps_api_key = self.config['GMAPS_API_KEY']
 
         # Create a reusable session
         self.session = requests.Session()
@@ -396,9 +395,6 @@ if __name__ == "__main__":
         logging.info(f"{end_time}: Completed {task_name} (Time taken: {(end_time - start_time).total_seconds()} seconds)")
         return result
 
-    # doc = Document()
-    # print([style.name for style in doc.styles])
-
     extractor = TravelBlogExtractor()
 
     try:
@@ -409,10 +405,10 @@ if __name__ == "__main__":
             lambda: open(extractor.blog_post_list, "w", encoding="utf-8").writelines([link + "\n" for link in post_links])
         )
 
-        log_execution("create_travel_blog_docx",
-                      extractor.create_travel_blog_docx,
-                      extractor.output_docx_file,
-                      extractor.blog_post_list)
+        # log_execution("create_travel_blog_docx",
+        #               extractor.create_travel_blog_docx,
+        #               extractor.output_docx_file,
+        #               extractor.blog_post_list)
 
         # log_execution("convert_docx_to_pdf",
         #               extractor.convert_docx_to_pdf,
